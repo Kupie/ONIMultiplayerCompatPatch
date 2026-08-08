@@ -1,15 +1,15 @@
-using System;
+using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using KMod;
-using ONI_Together.API;
+using ONI_Together_API;
+using ONI_Together_API.Networking;
+using UnityEngine;
 
 namespace MultiplayerCompatPatch
 {
     public sealed class ModEntry : UserMod2
     {
-        public const string HarmonyId = "MultiplayerCompatPatch";
-
         private Harmony _harmony;
 
         public override void OnLoad(Harmony harmony)
@@ -21,7 +21,7 @@ namespace MultiplayerCompatPatch
             // assemblies actually got loaded. Nothing here assumes any of those five mods exist.
         }
 
-        public override void OnAllModsLoaded(Harmony harmony, System.Collections.Generic.IReadOnlyList<Mod> mods)
+        public override void OnAllModsLoaded(Harmony harmony, IReadOnlyList<Mod> mods)
         {
             base.OnAllModsLoaded(harmony, mods);
 
@@ -40,6 +40,9 @@ namespace MultiplayerCompatPatch
             ScaffoldsCompat.ScaffoldsCompatPatches.TryApply(_harmony);
             ResearchQueueCompat.ResearchQueueCompatPatches.TryApply(_harmony);
 
+            // Registers every IPacket implementor in this assembly - must run after all the
+            // TryApply calls above so patching failures don't leave half-registered packet types,
+            // and per ONI_Together_API's own guidance, not before OnAllModsLoaded.
             PacketRegistryAPI.AutoRegisterAll(Assembly.GetExecutingAssembly());
         }
     }

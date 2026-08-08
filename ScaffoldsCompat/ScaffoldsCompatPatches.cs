@@ -34,7 +34,7 @@ namespace MultiplayerCompatPatch.ScaffoldsCompat
             }
 
             InstantBuildFix.ApplyFor(harmony, ScaffoldPrefabId);
-            DeconstructSyncPatches.Apply(harmony);
+            CellMethodRelay.ApplyPostfix(harmony, DeconstructableScaffoldType, "OnDeconstruct");
             SelfDestructSyncPatches.Apply(harmony);
         }
     }

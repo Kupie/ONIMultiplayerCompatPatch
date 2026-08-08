@@ -1,7 +1,17 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <TargetFramework>net471</TargetFramework>
+    <!--
+      netstandard2.1, not net471/net472 like the Harmony-only mods this patches. This matters:
+      ONI_Together_API (and ONI Together's own main mod project) targets netstandard2.1, and
+      classic .NET Framework (net47x) cannot restore a netstandard2.1 PackageReference at all -
+      that's the "PackageReference friction" the task brief warned about. Matching ONI Together's
+      own TargetFramework sidesteps it entirely; Unity/ONI's Mono runtime loads the result the same
+      way it loads ONI Together itself. Verified: this project compiles clean against a real
+      ONI_Together_API.dll pulled from nuget.org plus real game assemblies (see NOTES.md) - net471
+      was the first thing tried and rejected specifically because of this incompatibility.
+    -->
+    <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>
     <AssemblyName>MultiplayerCompatPatch</AssemblyName>
     <RootNamespace>MultiplayerCompatPatch</RootNamespace>
@@ -36,8 +46,8 @@
       <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
-    <Reference Include="UnityEngine.IMGUIModule">
-      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+    <Reference Include="UnityEngine.InputLegacyModule">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.InputLegacyModule.dll</HintPath>
       <Private>false</Private>
     </Reference>
     <Reference Include="Newtonsoft.Json">
@@ -54,7 +64,13 @@
       (the four target mods) is patched via string-based Harmony targeting so a missing mod is a
       graceful no-op instead of a TypeLoadException. See README_NUGET.md in the ONI Together repo.
     -->
-    <PackageReference Include="ONI_Together_API" Version="1.0.0" />
+    <!--
+      Pinned to the latest version published on nuget.org as of 2026-08-08
+      (https://api.nuget.org/v3-flatcontainer/oni_together_api/index.json). ONI Together is
+      pre-alpha and this package is itself pre-release (0.x-alpha) - re-check that URL for a newer
+      version before relying on this pin for long.
+    -->
+    <PackageReference Include="ONI_Together_API" Version="0.7.2-alpha.0.34" />
   </ItemGroup>
 
 </Project>

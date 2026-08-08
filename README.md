@@ -30,6 +30,12 @@ an `ONIPath` environment variable) at your ONI install root - the folder contain
 dotnet build /p:ONIPath="C:\...\Oxygen Not Included"
 ```
 
-This mod's own build/test environment had no network access to NuGet or a .NET SDK, so this project
-has been written against source but **not yet compiled or run**. Build and playtest (host + client,
-for every scenario in NOTES.md) before trusting it.
+The project targets `netstandard2.1` (not `net471`), matching `ONI_Together_API`'s own target -
+see NOTES.md for why that matters.
+
+This mod's own dev environment had no `dotnet` SDK reachable (Microsoft's download CDN was blocked
+by an outbound proxy) and no ONI install, so it couldn't be built or run with `dotnet build`/in-game.
+It has, however, been compiled clean with the Mono C# compiler against the real `ONI_Together_API.dll`
+pulled from nuget.org and real Klei game assemblies - see NOTES.md for exactly what that did and
+didn't catch. Build with the real SDK and playtest host + client for every scenario in NOTES.md
+before trusting this in a real game.

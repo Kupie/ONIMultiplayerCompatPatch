@@ -1,0 +1,3 @@
+title: Multiplayer Compat Patch
+description: Harmony compatibility shim that fixes desyncs between ONI Together (multiplayer) and MoveThisHere, SignsTagsAndRibbons, Scaffolds, and ResearchQueue.
+staticID: MultiplayerCompatPatch

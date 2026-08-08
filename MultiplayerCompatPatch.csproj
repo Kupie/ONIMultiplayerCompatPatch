@@ -1,0 +1,60 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net471</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <AssemblyName>MultiplayerCompatPatch</AssemblyName>
+    <RootNamespace>MultiplayerCompatPatch</RootNamespace>
+    <GenerateAssemblyInfo>false</GenerateAssemblyInfo>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <!--
+      ONIPath must point at the ONI install root (the folder containing OxygenNotIncluded_Data),
+      e.g. set an ONIPath environment variable or pass /p:ONIPath=... to msbuild/dotnet build.
+      Same convention used by Scaffolds, ResearchQueue, and other community ONI mods.
+    -->
+    <ONIPath Condition="'$(ONIPath)' == ''">$(ONI_INSTALL_DIR)</ONIPath>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="0Harmony">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\Assembly-CSharp.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Assembly-CSharp-firstpass">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\Assembly-CSharp-firstpass.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.IMGUIModule">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\UnityEngine.IMGUIModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>$(ONIPath)\OxygenNotIncluded_Data\Managed\Newtonsoft.Json.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <!--
+      Soft dependency on the multiplayer mod: safe to reference even when ONI Together isn't
+      installed, since MP_Mod_Info.MultiplayerModPresent / the API's own reflection-based design
+      no-ops gracefully. This is the one hard reference this project takes - everything else
+      (the four target mods) is patched via string-based Harmony targeting so a missing mod is a
+      graceful no-op instead of a TypeLoadException. See README_NUGET.md in the ONI Together repo.
+    -->
+    <PackageReference Include="ONI_Together_API" Version="1.0.0" />
+  </ItemGroup>
+
+</Project>

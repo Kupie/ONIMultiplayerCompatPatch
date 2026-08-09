@@ -51,7 +51,10 @@ namespace MultiplayerCompatPatch.Infrastructure
                 return;
             }
 
-            var tryBuild = AccessTools.Method(typeof(BuildTool), nameof(BuildTool.TryBuild));
+            // String-targeted, not nameof(BuildTool.TryBuild): as of the current game build
+            // (verified against decompiled source, see NOTES.md) TryBuild is private, so nameof
+            // wouldn't compile here even though BuildTool itself is a hard-referenced vanilla type.
+            var tryBuild = AccessTools.Method(typeof(BuildTool), "TryBuild", new[] { typeof(int) });
             if (tryBuild == null)
             {
                 return;
@@ -64,13 +67,15 @@ namespace MultiplayerCompatPatch.Infrastructure
             _patched = true;
         }
 
-        private static void Prefix(BuildTool __instance, out bool __state)
+        // ___def: BuildTool.def is a private field (verified against decompiled source) - Harmony's
+        // underscore-prefixed injection reads it via reflection regardless of accessibility, same
+        // idiom used for Research.queuedTech elsewhere in this mod.
+        private static void Prefix(BuildingDef ___def, out bool __state)
         {
             __state = false;
             try
             {
-                var def = __instance != null ? __instance.def : null;
-                var prefabId = def != null ? def.PrefabID : null;
+                var prefabId = ___def != null ? ___def.PrefabID : null;
                 if (prefabId != null && TrackedPrefabIds.Contains(prefabId) && !DebugHandler.InstantBuildMode)
                 {
                     DebugHandler.InstantBuildMode = true;

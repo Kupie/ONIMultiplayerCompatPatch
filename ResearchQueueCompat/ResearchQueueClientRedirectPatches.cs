@@ -92,7 +92,10 @@ namespace MultiplayerCompatPatch.ResearchQueueCompat
             SendToHostGuard.TryApply(harmony);
         }
 
-        private static bool OnResearchClicked_Prefix(ResearchEntry __instance)
+        // ___targetTech: ResearchEntry.targetTech is a private field (verified against decompiled
+        // source) - Harmony's underscore-prefixed injection reads it via reflection regardless of
+        // accessibility.
+        private static bool OnResearchClicked_Prefix(Tech ___targetTech)
         {
             _suppressingLocalClick = false;
             _currentShiftHeld = false;
@@ -104,7 +107,7 @@ namespace MultiplayerCompatPatch.ResearchQueueCompat
                     return true;
                 }
 
-                var tech = __instance != null ? __instance.targetTech : null;
+                var tech = ___targetTech;
                 if (tech == null)
                 {
                     return true;

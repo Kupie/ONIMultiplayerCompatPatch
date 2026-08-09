@@ -2,14 +2,18 @@
 
   <PropertyGroup>
     <!--
-      netstandard2.1, not net471/net472 like the Harmony-only mods this patches. This matters:
+      netstandard2.1, not net471/net48 like the Harmony-only mods this patches. This matters:
       ONI_Together_API (and ONI Together's own main mod project) targets netstandard2.1, and
-      classic .NET Framework (net47x) cannot restore a netstandard2.1 PackageReference at all -
+      classic .NET Framework (net47x/net48) cannot restore a netstandard2.1 PackageReference at all -
       that's the "PackageReference friction" the task brief warned about. Matching ONI Together's
       own TargetFramework sidesteps it entirely; Unity/ONI's Mono runtime loads the result the same
       way it loads ONI Together itself. Verified: this project compiles clean against a real
       ONI_Together_API.dll pulled from nuget.org plus real game assemblies (see NOTES.md) - net471
       was the first thing tried and rejected specifically because of this incompatibility.
+      Still correct after ONI's Aqua/Aquatic Planet Pack update (2026-06-11), which moved the
+      classic-Framework baseline for ONI mods from net471 to net48 (confirmed via PLib's own
+      migration, which explicitly kept netstandard2.1 as its primary target) - net48 has the exact
+      same netstandard2.1-incompatibility as net471, so nothing changes here. See NOTES.md.
     -->
     <TargetFramework>netstandard2.1</TargetFramework>
     <LangVersion>latest</LangVersion>

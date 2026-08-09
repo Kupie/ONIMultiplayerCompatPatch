@@ -68,7 +68,9 @@ namespace MultiplayerCompatPatch.ResearchQueueCompat
                     return;
                 }
 
-                var tech = Db.Get().Techs.Get(TechId);
+                // TryGet, not Get: Get logs its own "Could not find" error on a miss, which would
+                // double up with our own warning below for no benefit.
+                var tech = Db.Get().Techs.TryGet(TechId);
                 if (tech == null)
                 {
                     Debug.LogWarning("[MultiplayerCompatPatch] ResearchQueueActionRequestPacket: unknown tech id " + TechId);

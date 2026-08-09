@@ -5,6 +5,63 @@ package, pulled 2026-08-08. ONI Together is pre-alpha and moves fast - re-read t
 testing" section before trusting this against a newer ONI Together build, and re-verify anything
 that throws a `MissingMethodException`/`AmbiguousMatchException` at runtime.
 
+## Update 2026-08-09: the Aqua ("Aquatic Planet Pack") game update, and a second verification pass
+
+ONI shipped its Aquatic Planet Pack update June 11 2026 (community wiki records it as build
+`U59-736649`, `mod_info.yaml`'s `minimumSupportedBuild` bumped to `736649` accordingly - I could not
+independently confirm that exact number since the wiki/Steam news pages were blocked by this
+environment's egress proxy when I tried to fetch them directly, so treat it as reasonably-sourced
+rather than certain, and double check before shipping).
+
+Two follow-up questions came up, both now resolved:
+
+1. **Should this project's own TargetFramework change to net48?** No. A web search turned up that
+   PLib (the foundational library ResearchQueue and most other community ONI mods build on) recently
+   migrated its own "legacy" target from `net471` to `net48`, while explicitly keeping
+   `netstandard2.1` as its primary target - i.e. `net48` is now the floor for classic-Framework ONI
+   mods (replacing `net471`), but `netstandard2.1` remains valid and is what this project needs
+   anyway to consume `ONI_Together_API`'s `PackageReference` without the restore-time incompatibility
+   described above. This project's `TargetFramework` was already `netstandard2.1` and did not need to
+   change.
+2. **Does anything in this mod's code actually need to change for the Aqua build?** Yes, two things -
+   found by a second, much stronger verification pass: I was given read access to
+   `github.com/Kupie/ONI_Decomp`, a full decompilation of the actual current `Assembly-CSharp`/
+   `Assembly-CSharp-firstpass`. Unlike the first pass (compiling against a "publicized" reference DLL
+   bundled in peterhaneve/ONIMods' own repo, which flips private members to public *for compiling
+   against only* - the standard ONI-modding trick, also used by ONI Together itself via its own
+   `PublicisedAssembly` folder), this is the real, current, unmodified source, so it's the strongest
+   signal available in this environment for "what's actually private now." Grepped/read every vanilla
+   API surface this project touches against it. Two real accessibility changes found and fixed:
+   - `BuildTool.TryBuild(int)` and `BuildTool.def` are both **private** in the actual game. My
+     `InstantBuildFix` originally used `nameof(BuildTool.TryBuild)` (would not compile against the
+     real, non-publicized member) and direct `__instance.def` access (same problem). Fixed: string-
+     targeted `AccessTools.Method(typeof(BuildTool), "TryBuild", new[] { typeof(int) })`, and Harmony's
+     `___def`-prefixed field injection instead of direct field access - the same accessibility-
+     agnostic idiom already used for `Research.queuedTech` elsewhere in this project, which works
+     against a private field regardless of what a "publicized" compile-time-only DLL claims.
+   - `ResearchEntry.targetTech` is also **private**. Same fix: `Tech ___targetTech` field injection
+     in `ResearchQueueClientRedirectPatches.OnResearchClicked_Prefix` instead of `__instance.targetTech`.
+
+   Everything else this project touches - `BuildingDef.PrefabID` (`string`), `Research.CancelResearch`
+   (`Tech, bool clickedEntry = true`), `Research.AddTechToQueue` (`private void(Tech)`, still recurses
+   into `tech.requiredTech`), `Research.SetActiveResearch` (`Tech, bool clearQueue = false`) and
+   `queuedTech` (`private List<TechInstance>`), `DebugHandler.InstantBuildMode` (`public static bool`),
+   `Grid.PosToCell`/`Grid.Objects`/`Grid.IsValidCell`, `ObjectLayer.Building`,
+   `KMod.UserMod2.OnAllModsLoaded(Harmony, IReadOnlyList<Mod>)`, `GameClock.GetTime()`, and
+   `Db.Get().Techs.Get/TryGet(string)` - matched exactly what this project already assumed, no other
+   changes needed.
+
+   Reading `Research.SetActiveResearch`'s and `Research.AddTechToQueue`'s actual current bodies also
+   fully resolved a question the first pass had left as "inferred, not proven": what "active research"
+   actually is. It's not a separately-tracked concept - `SetActiveResearch(tech, clearQueue)` always
+   ends by sorting `queuedTech` by tier and setting `activeResearch = queuedTech[0]` (or clearing
+   everything if `tech == null`). This confirms `ResearchQueueActionRequestPacket`'s host-side handler
+   (which calls `AddTechToQueue` then `SetActiveResearch(tech, false)` to add-and-requeue, or removes
+   an entry then calls `SetActiveResearch(lastRemaining, false)` to re-sort) does the right thing by
+   construction, including the empty-queue-after-removal case (`SetActiveResearch(null, false)` just
+   clears the already-empty queue - no `AddTechToQueue(null)` call happens, since the `tech == null`
+   branch never reaches that call). No behavior change needed there, just confirmation.
+
 ## What's actually been verified, and how
 
 Two independent passes, not just reading source:

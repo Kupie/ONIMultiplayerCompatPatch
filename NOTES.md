@@ -5,7 +5,70 @@ package, pulled 2026-08-08. ONI Together is pre-alpha and moves fast - re-read t
 testing" section before trusting this against a newer ONI Together build, and re-verify anything
 that throws a `MissingMethodException`/`AmbiguousMatchException` at runtime.
 
-## Update 2026-08-09: the Aqua ("Aquatic Planet Pack") game update, and a second verification pass
+## Update 2026-08-12: verified against ONI Together's `testing/network-backend-upgrades` branch
+
+Checked this mod against `Lyraedan/Oxygen_Not_Included_Together@testing/network-backend-upgrades`
+(HEAD `45664b0`, 212 commits ahead of `main`'s common ancestor). **Conclusion: no code changes were
+needed.** This branch introduces a large new internal networking subsystem ("OxySync" - a
+Mirror/FishNet-style `NetworkBehaviour`/`[SyncVar]`/`[Command]`/`[ClientRpc]`/`[TargetRpc]`
+component framework, `Shared/OxySync/` + `ONI_Together/Networking/OxySync/` +
+`ONI_Together/Patches/OxySync/`), but three things keep this mod unaffected:
+
+1. **OxySync is additive, not a replacement.** It's already wired up and driving real features -
+   plant lifecycle, duplicant/creature vitals and status items, entity position, batteries/
+   generators, storage/toilets/printing-pod/nuclear-reactor, several building-internal state
+   machines (algae habitat, electrolyzer, rottable food, clinic, bottle emptier, rust deoxidizer,
+   grave), game clock/speed, and chat - but building placement, research sync, vanilla side-screen/
+   slider sync, and building renaming are all **still on the old plain-`IPacket` system** this mod
+   already integrates with. None of the four target mods' components (HaulingPoint, Scaffold,
+   SelectableSign, ResearchQueue) appear in OxySync's migrated-feature list.
+2. **OxySync's own traffic rides inside the same old `IPacket`/`PacketSender` transport anyway**
+   (`CommandPacket`/`ClientRpcPacket`/`SyncVarPacket`/`SyncVarBatchPacket` are themselves `IPacket`
+   implementations sent via the same `PacketSender.SendToGroup`/`SendToHost`/etc. this mod already
+   knows about) - so even where this mod does touch the transport layer directly
+   (`ResearchQueueClientRedirectPatches.SendToHostGuard`, which Harmony-patches
+   `ONI_Together.Networking.PacketSender.SendToHost` by name), that method's namespace and exact
+   signature (`SendToHost(IPacket packet, PacketSendMode sendType = PacketSendMode.ReliableImmediate)`)
+   are confirmed unchanged on this branch, even though the file itself physically moved to
+   `ONI_Together/Networking/Packets/Architecture/PacketSender.cs`. `AccessTools.TypeByName` resolves
+   by namespace+name, not by file path, so this was never going to matter - worth having confirmed
+   directly rather than assumed, though, given how much this specific patch was flagged as fragile.
+3. **Every specific internal patch/packet this mod reflects into or mirrors the idiom of was
+   individually checked and confirmed unchanged in every way that matters**:
+   - `BuildToolPatch`/`BuildPacket` (`InstantBuildFix`'s target): `BuildPacket.InstantBuild` is still
+     a private bool with no accessor, still computed in `BuildToolPatch.Postfix` from
+     `DebugHandler.InstantBuildMode || (Game.Instance.SandboxModeActive && SandboxToolParameterMenu.instance.settings.InstantBuild)`.
+     The packet's constructor and internal dispatch were refactored (priority is now read from
+     `PlanScreen.Instance` inside the constructor instead of passed in, and replacement-layer
+     handling was added), but none of that is anything this mod touches.
+   - `ResearchPatch`/`ResearchEntryPatch`/`ResearchRequestPacket`/`ResearchStatePacket`
+     (`ResearchQueueCompat`'s whole design rests on these): all confirmed unchanged, including the
+     one fact this mod's design specifically depends on - `ResearchRequestPacket` still has only a
+     single `TechId` field, no shift-click/queue semantics. (A new, unrelated `ResearchProgressPacket`
+     was added for progress-bar percentage sync - nothing to do with this mod.)
+   - `UserNameableChangePacket`/`UserNameablePatch`, `BuildingConfigPacket`/`SliderPatches`/
+     `SideScreenSyncHelper`, `NetworkIdentity`/`NetworkIdentityRegistry`: all still exist at the same
+     paths implementing the same idioms this mod's own design mirrors or relies on existing
+     generically (`BuildingConfigPacket` picked up a new `Sender` self-echo field and had its
+     dispatch refactored into a `BuildingConfigHandlerRegistry`, but this mod never reflects into
+     that class directly - it only relies on the generic slider sync working, which is unaffected).
+
+   There's one blanket-scope thing worth flagging even though it doesn't currently intersect with
+   this mod: a new Harmony prefix, `StateMachineGoToFreeze_Patch`
+   (`[HarmonyPatch(typeof(StateMachine.Instance), nameof(StateMachine.Instance.GoTo), typeof(string))]`),
+   intercepts **every** Klei `StateMachine.Instance.GoTo` call in the entire game and blocks it if
+   OxySync has frozen that instance (done for OxySync-migrated buildings only, today). None of the
+   four target mods' components use Klei `StateMachine<T>` internally as far as this mod's research
+   found, so this shouldn't matter - but if a future target mod (or a newer version of one of the
+   current four) turns out to drive its behavior through a `StateMachine.Instance`, this is a global
+   patch worth knowing exists.
+
+The published `ONI_Together_API` NuGet package this mod's `PackageReference` pins
+(`0.7.2-alpha.0.34`) is unaffected either way: its public surface differs from `main` by exactly one
+addition (`SessionInfoAPI.TryGetPlayerCursorPos`/`TryGetPlayerColor`, neither used here), and that
+package is itself already stale relative to `main` (nobody has cut a new tag/publish since before
+`main`'s current `v0.7.3`) - a pre-existing condition unrelated to this branch. No csproj change
+needed.
 
 ONI shipped its Aquatic Planet Pack update June 11 2026 (community wiki records it as build
 `U59-736649`, `mod_info.yaml`'s `minimumSupportedBuild` bumped to `736649` accordingly - I could not

@@ -5,6 +5,38 @@ package, pulled 2026-08-08. ONI Together is pre-alpha and moves fast - re-read t
 testing" section before trusting this against a newer ONI Together build, and re-verify anything
 that throws a `MissingMethodException`/`AmbiguousMatchException` at runtime.
 
+## Update 2026-08-29: fixed a live bug - Scaffolds' "Remove" button didn't sync (deconstruct order did)
+
+Reported from actual play: using the custom "Remove" user-menu button on a Scaffold didn't sync to
+other peers, but deconstructing it via ONI Together's own vanilla deconstruct-order sync did.
+
+Root cause, confirmed from source: `ScaffoldConfig.cs` sets
+`public static ObjectLayer ObjectLayer = ObjectLayer.FillPlacer;` (with the mod author's own comment
+"This layer doesn't seem to be used anywhere else... hopefully") and assigns it to
+`scaffoldDef.ObjectLayer` - Scaffold is deliberately placed on `ObjectLayer.FillPlacer`, not
+`ObjectLayer.Building`. `Infrastructure.CellAddressing.FindBuildingAt` hardcoded a lookup against
+`Grid.Objects[cell, (int)ObjectLayer.Building]`, so on the receiving peer it silently found nothing
+for a Scaffold - the "Remove" button's `CellMethodInvokePacket` (via `CellMethodRelay`, patched onto
+`DeconstructableScaffold.OnDeconstruct`) was being sent correctly, it just could never find its
+target to replay the call against. The vanilla deconstruct order worked because ONI Together
+addresses buildings through its own `NetworkIdentity`/NetId system there, not through this lookup.
+
+This affected every cell-addressed packet in the mod, not just Scaffolds' deconstruct sync -
+`ScaffoldSelfDestructTogglePacket` and `SignVariantChangePacket` used the same helper. Fixed by
+replacing the hardcoded-layer lookup with `CellAddressing.FindBuildingWithComponentAt(cell, type)`,
+which scans every `ObjectLayer` at the cell for a GameObject carrying the expected component type
+instead of assuming any particular layer - this is layer-agnostic by construction, so it can't
+recur for some other custom mod building that also picks an unusual `ObjectLayer`. All three call
+sites (`CellMethodInvokePacket`, `ScaffoldSelfDestructTogglePacket`, `SignVariantChangePacket`) were
+updated. SignsTagsAndRibbons' sign buildings don't appear to override `ObjectLayer` (so were
+probably fine on the old hardcoded lookup already, defaulting to `ObjectLayer.Building`), and
+MoveThisHere's `HaulingPoint` likewise doesn't override it - but there's no reason to leave either
+on the fragile assumption now that the general fix exists.
+
+**Not yet re-verified live** - the theory fits the reported symptom exactly (send succeeds, receive
+silently no-ops) and the fix compiles clean, but this specific scenario (Remove button, host+client)
+should be the first thing re-tested.
+
 ## Update 2026-08-12: verified against ONI Together's `testing/network-backend-upgrades` branch
 
 Checked this mod against `Lyraedan/Oxygen_Not_Included_Together@testing/network-backend-upgrades`

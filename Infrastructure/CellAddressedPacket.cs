@@ -19,13 +19,34 @@ namespace MultiplayerCompatPatch.Infrastructure
     /// </summary>
     public static class CellAddressing
     {
-        public static GameObject FindBuildingAt(int cell)
+        /// <summary>
+        /// Layer-agnostic: scans every populated ObjectLayer at this cell for a GameObject
+        /// carrying the given component type, rather than assuming ObjectLayer.Building. Custom
+        /// mod buildings don't necessarily live on that layer - e.g. Scaffolds deliberately places
+        /// Scaffold on ObjectLayer.FillPlacer specifically to avoid clashing with anything else
+        /// (see ScaffoldConfig.ObjectLayer), which meant a hardcoded ObjectLayer.Building lookup
+        /// here silently found nothing on the receiving peer and every cell-addressed packet for
+        /// that building failed to apply (confirmed live: the "Remove" button, which routes through
+        /// this lookup, never synced; the vanilla deconstruct order, which ONI Together addresses
+        /// through its own NetId-based system instead of this one, did).
+        /// </summary>
+        public static GameObject FindBuildingWithComponentAt(int cell, Type componentType)
         {
-            if (!Grid.IsValidCell(cell))
+            if (!Grid.IsValidCell(cell) || componentType == null)
             {
                 return null;
             }
-            return Grid.Objects[cell, (int)ObjectLayer.Building];
+
+            int numLayers = (int)ObjectLayer.NumLayers;
+            for (int layer = 0; layer < numLayers; layer++)
+            {
+                var go = Grid.Objects[cell, layer];
+                if (go != null && go.GetComponent(componentType) != null)
+                {
+                    return go;
+                }
+            }
+            return null;
         }
     }
 
@@ -124,16 +145,16 @@ namespace MultiplayerCompatPatch.Infrastructure
         {
             try
             {
-                var go = CellAddressing.FindBuildingAt(Cell);
-                if (go == null)
-                {
-                    return;
-                }
-
                 var type = AccessTools.TypeByName(TypeName);
                 if (type == null)
                 {
                     // This peer doesn't have the owning mod installed - nothing we can replay.
+                    return;
+                }
+
+                var go = CellAddressing.FindBuildingWithComponentAt(Cell, type);
+                if (go == null)
+                {
                     return;
                 }
 

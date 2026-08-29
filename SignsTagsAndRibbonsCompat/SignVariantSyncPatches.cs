@@ -90,14 +90,14 @@ namespace MultiplayerCompatPatch.SignsTagsAndRibbonsCompat
         {
             try
             {
-                var go = CellAddressing.FindBuildingAt(Cell);
-                if (go == null)
+                var type = AccessTools.TypeByName(SignsTagsAndRibbonsCompatPatches.SelectableSignType);
+                if (type == null)
                 {
                     return;
                 }
 
-                var type = AccessTools.TypeByName(SignsTagsAndRibbonsCompatPatches.SelectableSignType);
-                if (type == null)
+                var go = CellAddressing.FindBuildingWithComponentAt(Cell, type);
+                if (go == null)
                 {
                     return;
                 }

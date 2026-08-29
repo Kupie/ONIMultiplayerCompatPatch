@@ -122,14 +122,14 @@ namespace MultiplayerCompatPatch.ScaffoldsCompat
         {
             try
             {
-                var go = CellAddressing.FindBuildingAt(Cell);
-                if (go == null)
+                var type = AccessTools.TypeByName(ScaffoldsCompatPatches.ScaffoldType);
+                if (type == null)
                 {
                     return;
                 }
 
-                var type = AccessTools.TypeByName(ScaffoldsCompatPatches.ScaffoldType);
-                if (type == null)
+                var go = CellAddressing.FindBuildingWithComponentAt(Cell, type);
+                if (go == null)
                 {
                     return;
                 }
